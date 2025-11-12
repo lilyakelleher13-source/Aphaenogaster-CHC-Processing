@@ -1,0 +1,51 @@
+
+```{r}
+library(tidyverse)
+setwd("C:/Users/lily2/Desktop/CHCS")
+
+# Load the data
+df <- read.csv("hydrocarbon_counts_R.csv")
+
+# Convert to long format for ggplot
+df_long <- df %>%
+  pivot_longer(cols = c("Alkane", "Methyl.alkane", "Alkene", "Dimethyl.alkane","Trimethyl.alkane"),
+               names_to = "Compound_Type",
+               values_to = "Count")
+
+
+df_long$Species <- factor(df_long$Species,
+                          levels = c("A. fulva","A. rudis", "A. picea", "A. tennesseensis"))
+
+
+p <- ggplot(df_long, aes(x = Compound_Type, y = Count, fill = Species)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  labs(x = "Hydrocarbon Class",
+       y = "Number of CHCs",
+       fill = "Species") +
+  scale_fill_manual(
+    name = "Species",
+    values = c(
+      "A. fulva" = "#064b1f",        # deep pine green
+      "A. picea" = "#2e8b57",        # medium green
+      "A. rudis" = "#a8c686",        # muted light green
+      "A. tennesseensis" = "#7b4fa0" # purple
+    )
+  ) +
+  scale_x_discrete(labels = c(
+    "Alkane" = "n-Alkane",
+    "Methyl.alkane" = "Methyl-alkane",
+    "Dimethyl.alkane" = "Dimethyl-alkane",
+    "Trimethyl.alkane" = "Trimethyl-alkane"
+  )) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.text = element_text(face = "italic"),
+    panel.grid = element_blank(),
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5)
+  )
+
+
+```
+

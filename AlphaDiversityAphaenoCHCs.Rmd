@@ -1,0 +1,188 @@
+
+```{r}
+library(vegan)
+setwd("C:/Users/lily2/Desktop/CHCS")
+
+chc_data <- scent_aphaenoCHC
+
+shannon_CHC <- diversity(scent_aphaenoCHC, index = "shannon")
+shannon_CHC
+
+alpha_divCHC <- data.frame(
+  Sample = rownames(scent_aphaenoCHC),
+  Shannon = shannon_CHC
+)
+
+alpha_divCHC <- merge(alpha_divCHC, metadata, by = "Sample")
+
+#Sample
+kruskal.test(Shannon ~ Sample, data = alpha_divCHC)
+
+#Species
+kruskal.test(Shannon ~ Species, data = alpha_divCHC)
+
+##Multiple Comparisons
+pairwise.wilcox.test(
+  x = alpha_divCHC$Shannon,   
+  g = alpha_divCHC$Species,   
+  p.adjust.method = "bonferroni",  
+  exact = FALSE             
+)
+
+##Shannon values. Higher H values mean higher diveristy
+aggregate(Shannon ~ Species, data = alpha_divCHC, FUN = median)
+aggregate(Shannon ~ Role, data = alpha_divCHC, FUN = median)
+
+#Host Vs. Parasite
+kruskal.test(Shannon ~ Role, data = alpha_divCHC)
+
+#State
+kruskal.test(Shannon ~ State, data = alpha_divCHC)
+
+#Colony
+kruskal.test(Shannon ~ Colony, data = alpha_divCHC)
+
+#SampleLocation
+kruskal.test(Shannon ~ Location, data = alpha_divCHC)
+```
+
+## Richness
+```{r}
+richness_CHC <- specnumber(chc_data)
+
+alpha_divCHCrich <- data.frame(
+  Sample = rownames(chc_data),
+  Richness = richness_CHC
+)
+
+alpha_divCHCrich <- merge(alpha_divCHCrich, metadata, by = "Sample")
+
+#Sample
+kruskal.test(Richness ~ Sample, data = alpha_divCHCrich)
+
+#Species
+kruskal.test(Richness ~ Species, data = alpha_divCHCrich)
+
+##Multiple Comparisons
+pairwise.wilcox.test(
+  x = alpha_divCHCrich$Richness,   
+  g = alpha_divCHCrich$Species,   
+  p.adjust.method = "bonferroni",  
+  exact = FALSE             
+)
+
+#Host vs. Parasite
+kruskal.test(Richness ~ Role, data = alpha_divCHCrich)
+
+#State
+kruskal.test(Richness ~ State, data = alpha_divCHCrich)
+
+#Colony
+kruskal.test(Richness ~ Colony, data = alpha_divCHCrich)
+
+#Location
+kruskal.test(Richness ~ Location, data = alpha_divCHCrich)
+```
+```{r}
+# Load packages
+library(tidyverse)
+
+# ---- 1. Load data ----
+chc <- read.csv("aligned_aphaeno_RTCHCInternalStandard.csv", header = TRUE)
+meta <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# ---- 2. Check data structure ----
+head(chc)
+head(meta)
+
+# Ensure the sample name column matches between files
+# (rename if necessary)
+# e.g., if the first column in chc is called "SampleName":
+colnames(chc)[1] <- "Sample"
+
+# ---- 3. Merge metadata with CHC data ----
+chc_meta <- left_join(meta, chc, by = "Sample")
+
+# ---- 4. Calculate CHC richness per sample ----
+# Assuming each CHC column contains intensity/abundance values
+# Richness = number of CHCs with nonzero (or above-threshold) abundance
+
+chc_meta <- chc_meta %>%
+  mutate(CHC_richness = rowSums(select(., starts_with("V")) > 0))
+
+# ---- 5. Summarize richness per species ----
+richness_species <- chc_meta %>%
+  group_by(Species) %>%
+  summarise(mean_richness = mean(CHC_richness),
+            sd_richness = sd(CHC_richness),
+            n_samples = n())
+
+richness_role <- chc_meta %>%
+  group_by(Role) %>%
+  summarise(mean_richness = mean(CHC_richness),
+            sd_richness = sd(CHC_richness),
+            n_samples = n())
+
+# ---- 6. View results ----
+print(richness_species)
+print(richness_role)
+
+# ---- 7. (Optional) Visualize
+ggplot(chc_meta, aes(x = Species, y = CHC_richness)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(y = "CHC richness", x = "Species") +
+  theme_minimal()
+
+kruskal.test(CHC_richness ~ Species, data = chc_meta)
+
+pairwise.wilcox.test(chc_meta$CHC_richness, chc_meta$Species,
+                     p.adjust.method = "bonferroni")
+ 
+
+```
+
+
+
+## Evenness
+```{r}
+evenness_CHC <- shannon_CHC / log(richness_CHC)
+
+alpha_divCHCeven <- data.frame(
+  Sample = rownames(chc_data),
+  Evenness = evenness_CHC
+)
+
+alpha_divCHCeven <- merge(alpha_divCHCeven, metadata, by = "Sample")
+
+
+#Sample
+kruskal.test(Evenness ~ Sample, data = alpha_divCHCeven)
+
+#Species
+kruskal.test(Evenness ~ Species, data = alpha_divCHCeven)
+
+##Multiple Comparisons
+pairwise.wilcox.test(
+  x = alpha_divCHCeven$Evenness,   
+  g = alpha_divCHCeven$Species,   
+  p.adjust.method = "bonferroni",  
+  exact = FALSE             
+)
+
+##eveness values (number of CHCs/species). 
+aggregate(Evenness ~ Species, data = alpha_divCHCeven, FUN = median)
+aggregate(Evenness ~ Role, data = alpha_divCHCeven, FUN = median)
+
+#Host vs. Parasite
+kruskal.test(Evenness ~ Role, data = alpha_divCHCeven)
+
+#State
+kruskal.test(Evenness ~ State, data = alpha_divCHCeven)
+
+#Colony
+kruskal.test(Evenness ~ Colony, data = alpha_divCHCeven)
+
+#Location
+kruskal.test(Evenness ~ Location, data = alpha_divCHCeven)
+```
+

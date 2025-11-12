@@ -1,0 +1,486 @@
+
+```{r}
+setwd("C:/Users/lily2/Desktop/CHCS")
+
+library(GCalignR) 
+
+library(ggplot2) 
+
+library(plot3D) 
+library(permute)
+library(lattice)
+library(vegan) 
+library(ggthemes)
+library(vegan)
+library(ggplot2)
+library(tidyverse)
+library(ecole)
+library(readxl)
+library(RColorBrewer)
+library(dplyr)
+
+
+getwd() 
+```
+
+```{r}
+check_input(data = "AphaenogasterMasterSheetCHCONLY.txt") 
+```
+
+```{r}
+apur_align_aphaenoCHC <- align_chromatograms(data = "AphaenogasterMasterSheetCHCONLY.txt", rt_col_name = "RT", max_linear_shift = 0.1, max_diff_peak2mean = 0.01, min_diff_peak2peak = 0.2) 
+
+
+apur_align_export_aphaenoCHC <- as.data.frame(x = apur_align_aphaenoCHC) 
+print(apur_align_export_aphaenoCHC) 
+
+##TABLE OF RETENTION TIME AND AREAS, ONLY RUN IF YOU WANT COPIES OF THIS
+write.csv(x = apur_align_export_aphaenoCHC$Area, file = "C:/Users/lily2/Desktop/CHCS/aligned_aphaeno_areaCHC.csv") 
+
+write.csv(x = apur_align_export_aphaenoCHC$RT, file = "C:/Users/lily2/Desktop/CHCS/aligned_aphaeno_RTCHC.csv") 
+
+print(apur_align_aphaenoCHC) 
+print(apur_align_export_aphaenoCHC) 
+```
+
+### Create an alignment
+```{r}
+alignment_aphaenoCHC <- as.matrix(apur_align_aphaenoCHC) 
+str(alignment_aphaenoCHC) 
+print(alignment_aphaenoCHC) 
+
+str(apur_align_aphaenoCHC) 
+
+names(apur_align_aphaenoCHC) 
+
+#extract normalised peak area values 
+
+scent_aphaenoCHC <- norm_peaks(data = apur_align_aphaenoCHC, rt_col_name = "RT", conc_col_name = "AREA", out = "data.frame")
+
+logscent_aphaenoCHC <- log (scent_aphaenoCHC + 1)
+```
+
+# All Samples
+```{r}
+bray_distCHC <- vegdist(logscent_aphaenoCHC, method = "bray")
+
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+metadata <- metadata[match(rownames(logscent_aphaenoCHC), metadata$Sample), ]
+
+#Species
+species_resultCHC <- adonis2(bray_distCHC ~ Species, data = metadata, permutations = 999)
+
+species_resultCHC
+p_valueSpecies <- species_resultCHC$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+species_pvalue_tableCHC <- permanova_pairwise(
+  bray_distCHC,
+  metadata$Species,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+species_pvalue_tableCHC
+
+#Host vs. Parasite
+Role_resultCHC <- adonis2(bray_distCHC ~ Role, data = metadata, permutations = 999)
+
+Role_resultCHC
+p_valueRole <- Role_resultCHC$`Pr(>F)`[1]
+
+#State of collection
+State_resultCHC <- adonis2(bray_distCHC ~ State, data = metadata, permutations = 999)
+
+State_resultCHC
+p_valueState <- State_resultCHC$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+State_pvalue_tableCHC <- permanova_pairwise(
+  bray_distCHC,
+  metadata$State,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+State_pvalue_tableCHC
+
+#Colony
+Colony_resultCHC <- adonis2(bray_distCHC ~ Colony, data = metadata, permutations = 999)
+
+Colony_resultCHC
+p_valueColony <- Colony_resultCHC$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Colony_pvalue_tableCHC <- permanova_pairwise(
+  bray_distCHC,
+  metadata$Colony,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Colony_pvalue_tableCHC
+
+#Location
+Location_resultCHC <- adonis2(bray_distCHC ~ Location, data = metadata, permutations = 999)
+
+Location_resultCHC
+p_valueLocation <- Location_resultCHC$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Location_pvalue_tableCHC <- permanova_pairwise(
+  bray_distCHC,
+  metadata$Location,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Location_pvalue_tableCHC
+
+#Elevation
+Elevation_resultCHC <- adonis2(bray_distCHC ~ Elevation, data = metadata, permutations = 999)
+
+Elevation_resultCHC
+p_valueElevation <- Elevation_resultCHC$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Elevation_pvalue_tableCHC <- permanova_pairwise(
+  bray_distCHC,
+  metadata$Elevation,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Elevation_pvalue_tableCHC
+
+```
+
+## Each Host vs. Parasite seperate
+# Rudis vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennrudis <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Rudis"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennrudis <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennrudis$Sample, ]
+
+bray_distCHC_tennrudis <- vegdist(logscent_aphaenoCHC_tennrudis, method = "bray")
+
+metadata_tennrudis <- metadata_tennrudis[match(rownames(logscent_aphaenoCHC_tennrudis), metadata_tennrudis$Sample), ]
+
+#Species
+species_resultCHC_tennrudis <- adonis2(bray_distCHC_tennrudis ~ Species, data = metadata_tennrudis, permutations = 999)
+
+species_resultCHC_tennrudis
+p_valueSpecies_tennrudis <- species_resultCHC_tennrudis$`Pr(>F)`[1]
+```
+
+# picea vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennpicea <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Picea"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennpicea <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennpicea$Sample, ]
+
+bray_distCHC_tennpicea <- vegdist(logscent_aphaenoCHC_tennpicea, method = "bray")
+
+metadata_tennpicea <- metadata_tennpicea[match(rownames(logscent_aphaenoCHC_tennpicea), metadata_tennpicea$Sample), ]
+
+#Species
+species_resultCHC_tennpicea <- adonis2(bray_distCHC_tennpicea ~ Species, data = metadata_tennpicea, permutations = 999)
+
+species_resultCHC_tennpicea
+p_valueSpecies_tennpicea <- species_resultCHC_tennpicea$`Pr(>F)`[1]
+```
+ 
+# Fulva vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennfulva <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Fulva"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennfulva <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennfulva$Sample, ]
+
+bray_distCHC_tennfulva <- vegdist(logscent_aphaenoCHC_tennfulva, method = "bray")
+
+metadata_tennfulva <- metadata_tennfulva[match(rownames(logscent_aphaenoCHC_tennfulva), metadata_tennfulva$Sample), ]
+
+#Species
+species_resultCHC_tennfulva <- adonis2(bray_distCHC_tennfulva ~ Species, data = metadata_tennfulva, permutations = 999)
+
+species_resultCHC_tennfulva
+p_valueSpecies_tennfulva <- species_resultCHC_tennfulva$`Pr(>F)`[1]
+```
+
+## A. ten Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tenn <- metadata %>%
+  filter(Species == "Tennesseensis")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tenn <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tenn$Sample, ]
+
+bray_distCHC_tenn <- vegdist(logscent_aphaenoCHC_tenn, method = "bray")
+
+metadata_tenn <- metadata_tenn[match(rownames(logscent_aphaenoCHC_tenn), metadata_tenn$Sample), ]
+
+#Colony
+Colony_resultCHCt <- adonis2(bray_distCHC_tenn ~ Colony, data = metadata_tenn, permutations = 999)
+
+Colony_resultCHCt
+p_valueColonyt <- Colony_resultCHCt$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Colony_pvalue_tableCHCt <- permanova_pairwise(
+  bray_distCHC_tenn,
+  metadata_tenn$Colony,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Colony_pvalue_tableCHCt
+
+#State of collection
+State_resultCHCt <- adonis2(bray_distCHC_tenn ~ State, data = metadata_tenn, permutations = 999)
+
+State_resultCHCt
+p_valueStatet <- State_resultCHCt$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+State_pvalue_tableCHCt <- permanova_pairwise(
+  bray_distCHC_tenn,
+  metadata_tenn$State,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+State_pvalue_tableCHCt
+
+#Location
+Location_resultCHCt <- adonis2(bray_distCHC_tenn ~ Location, data = metadata_tenn, permutations = 999)
+
+Location_resultCHCt
+p_valueLocationt <- Location_resultCHCt$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Location_pvalue_tableCHCt <- permanova_pairwise(
+  bray_distCHC_tenn,
+  metadata_tenn$Location,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Location_pvalue_tableCHCt
+```
+
+## A. rudis Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_rudis <- metadata %>%
+  filter(Species == "Rudis")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_rudis <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_rudis$Sample, ]
+
+bray_distCHC_rudis <- vegdist(logscent_aphaenoCHC_rudis, method = "bray")
+
+metadata_rudis <- metadata_rudis[match(rownames(logscent_aphaenoCHC_rudis), metadata_rudis$Sample), ]
+
+#Colony
+Colony_resultCHCr <- adonis2(bray_distCHC_rudis ~ Colony, data = metadata_rudis, permutations = 999)
+
+Colony_resultCHCr
+p_valueColonyr <- Colony_resultCHCr$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Colony_pvalue_tableCHCr <- permanova_pairwise(
+  bray_distCHC_rudis,
+  metadata_rudis$Colony,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Colony_pvalue_tableCHCr
+
+#State of collection
+State_resultCHCr <- adonis2(bray_distCHC_rudis ~ State, data = metadata_rudis, permutations = 999)
+
+State_resultCHCr
+p_valueStater <- State_resultCHCr$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+State_pvalue_tableCHCr <- permanova_pairwise(
+  bray_distCHC_rudis,
+  metadata_rudis$State,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+State_pvalue_tableCHCr
+
+#Location
+Location_resultCHCr <- adonis2(bray_distCHC_rudis ~ Location, data = metadata_rudis, permutations = 999)
+
+Location_resultCHCr
+p_valueLocationr <- Location_resultCHCr$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Location_pvalue_tableCHCr <- permanova_pairwise(
+  bray_distCHC_rudis,
+  metadata_rudis$Location,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Location_pvalue_tableCHCr
+```
+
+## A. picea Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_picea <- metadata %>%
+  filter(Species == "Picea")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_picea <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_picea$Sample, ]
+
+bray_distCHC_picea <- vegdist(logscent_aphaenoCHC_picea, method = "bray")
+
+metadata_picea <- metadata_picea[match(rownames(logscent_aphaenoCHC_picea), metadata_picea$Sample), ]
+
+#Colony
+Colony_resultCHCp <- adonis2(bray_distCHC_picea ~ Colony, data = metadata_picea, permutations = 999)
+
+Colony_resultCHCp
+p_valueColonyp <- Colony_resultCHCp$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Colony_pvalue_tableCHCp <- permanova_pairwise(
+  bray_distCHC_picea,
+  metadata_picea$Colony,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Colony_pvalue_tableCHCp
+
+#State of collection
+State_resultCHCp <- adonis2(bray_distCHC_picea ~ State, data = metadata_picea, permutations = 999)
+
+State_resultCHCp
+p_valueStatep <- State_resultCHCp$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+State_pvalue_tableCHCp <- permanova_pairwise(
+  bray_distCHC_picea,
+  metadata_picea$State,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+State_pvalue_tableCHCp
+
+#Location
+Location_resultCHCp <- adonis2(bray_distCHC_picea ~ Location, data = metadata_picea, permutations = 999)
+
+Location_resultCHCp
+p_valueLocationp <- Location_resultCHCp$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Location_pvalue_tableCHCp <- permanova_pairwise(
+  bray_distCHC_picea,
+  metadata_picea$Location,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Location_pvalue_tableCHCp
+```
+
+## A. fulva Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_fulva <- metadata %>%
+  filter(Species == "Fulva")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_fulva <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_fulva$Sample, ]
+
+bray_distCHC_fulva <- vegdist(logscent_aphaenoCHC_fulva, method = "bray")
+
+metadata_fulva <- metadata_fulva[match(rownames(logscent_aphaenoCHC_fulva), metadata_fulva$Sample), ]
+
+#Colony
+Colony_resultCHCf <- adonis2(bray_distCHC_fulva ~ Colony, data = metadata_fulva, permutations = 999)
+
+Colony_resultCHCf
+p_valueColonyf <- Colony_resultCHCf$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Colony_pvalue_tableCHCf <- permanova_pairwise(
+  bray_distCHC_fulva,
+  metadata_fulva$Colony,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Colony_pvalue_tableCHCf
+
+#State of collection
+State_resultCHCf <- adonis2(bray_distCHC_fulva ~ State, data = metadata_fulva, permutations = 999)
+
+State_resultCHCf
+p_valueStatef <- State_resultCHCf$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+State_pvalue_tableCHCf <- permanova_pairwise(
+  bray_distCHC_fulva,
+  metadata_fulva$State,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+State_pvalue_tableCHCf
+
+#Location
+Location_resultCHCf <- adonis2(bray_distCHC_fulva ~ Location, data = metadata_fulva, permutations = 999)
+
+Location_resultCHCf
+p_valueLocationf <- Location_resultCHCf$`Pr(>F)`[1]
+
+##Pairwise (more than 1 variable)
+Location_pvalue_tableCHCf <- permanova_pairwise(
+  bray_distCHC_fulva,
+  metadata_fulva$Location,
+  permutations = 9999,
+  padj = "bonferroni"
+)
+
+Location_pvalue_tableCHCf
+```

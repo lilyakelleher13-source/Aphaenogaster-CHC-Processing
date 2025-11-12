@@ -1,0 +1,143 @@
+
+```{r}
+setwd("C:/Users/lily2/Desktop/CHCS")
+
+library(GCalignR) 
+
+library(ggplot2) 
+
+library(plot3D) 
+library(permute)
+library(lattice)
+library(vegan) 
+library(ggthemes)
+library(vegan)
+library(ggplot2)
+library(tidyverse)
+library(ecole)
+library(readxl)
+library(RColorBrewer)
+library(dplyr)
+
+
+getwd() 
+```
+
+```{r}
+# Load data
+area <- read.csv("AreaCHC.csv", header = TRUE, row.names = 1)
+
+# Inspect the first few rows
+head(area)
+
+area_rel <- area / rowSums(area)
+
+# Each row should now sum to 1
+rowSums(area_rel)
+
+write.csv(area_rel, "AreaCHC_relative.csv", row.names = TRUE)
+
+##NOW MANUALLY TRANSPOSE THIS CAUSE R IS BEING A BITCH
+```
+
+```{r}
+area_rel <- read.csv("AreaCHC_relative_T.csv")
+
+reported <- read_excel("ReportedCHC.xlsx")
+
+
+# Merge by CHC column
+merged_data <- merge(reported, area_rel, by = "CHC", all.x = TRUE)
+
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Select only the abundance data (sample columns)
+chc_data <- merged_data[, 9:ncol(merged_data)] 
+
+# Transpose (samples as rows, CHCs as columns)
+chc_matrix <- t(chc_data)
+
+# Add sample names
+rownames(chc_matrix) <- colnames(merged_data)[9:ncol(merged_data)]
+
+# Run PCA
+chc_matrix_filtered <- chc_matrix[, apply(chc_matrix, 2, var) != 0]
+
+pca_result <- prcomp(chc_matrix_filtered, center = TRUE, scale. = TRUE)
+
+# Extract PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+pca_scores$SampleID <- rownames(pca_scores)
+
+# Merge with metadata
+pca_meta <- merge(pca_scores, metadata, by.x = "SampleID", by.y = "Sample")
+
+
+```
+
+```{r}
+#ROLE and SPECIES
+ggplot(pca_meta, aes(x = PC1, y = PC2, color = Species, shape = Role)) +
+  geom_point(size = 3) +
+  theme_minimal()
+
+##THERE is not seperation between species along PC1 (x-axis)
+##THERE is seperation between rol along PC2 (y-axis). This shows within role variation
+
+# 1️⃣ Get loadings as a dataframe
+loadings <- as.data.frame(pca_result$rotation)
+loadings$CHC <- rownames(loadings)
+
+# 2️⃣ Select and sort by PC2 contribution
+loadings_PC2 <- loadings[order(abs(loadings$PC2), decreasing = TRUE), c("CHC", "PC2")]
+
+# 4️⃣ Check top 10
+head(loadings_PC2, 10)
+
+
+```
+
+```{r}
+#ROLE and SPECIES
+ggplot(pca_meta, aes(x = PC1, y = PC3, color = Species, shape = Role)) +
+  geom_point(size = 3) +
+  theme_minimal()
+
+##THERE is not seperation between species along PC1 (x-axis)
+##THERE is seperation between rol along PC2 (y-axis). This shows within role variation
+
+# 1️⃣ Get loadings as a dataframe
+loadings <- as.data.frame(pca_result$rotation)
+loadings$CHC <- rownames(loadings)
+
+# 2️⃣ Select and sort by PC2 contribution
+loadings_PC2 <- loadings[order(abs(loadings$PC2), decreasing = TRUE), c("CHC", "PC2")]
+
+# 4️⃣ Check top 10
+head(loadings_PC2, 10)
+
+
+```
+
+```{r}
+#ROLE and SPECIES
+ggplot(pca_meta, aes(x = PC3, y = PC2, color = Species, shape = Role)) +
+  geom_point(size = 3) +
+  theme_minimal()
+
+##THERE is not seperation between species along PC1 (x-axis)
+##THERE is seperation between rol along PC2 (y-axis). This shows within role variation
+
+# 1️⃣ Get loadings as a dataframe
+loadings <- as.data.frame(pca_result$rotation)
+loadings$CHC <- rownames(loadings)
+
+# 2️⃣ Select and sort by PC2 contribution
+loadings_PC2 <- loadings[order(abs(loadings$PC2), decreasing = TRUE), c("CHC", "PC2")]
+
+# 4️⃣ Check top 10
+head(loadings_PC2, 10)
+
+
+```
+

@@ -1,0 +1,801 @@
+
+```{r}
+setwd("C:/Users/lily2/Desktop/CHCS")
+
+library(GCalignR) 
+
+library(ggplot2) 
+
+library(plot3D) 
+library(permute)
+library(lattice)
+library(vegan) 
+library(ggthemes)
+library(vegan)
+library(ggplot2)
+library(tidyverse)
+library(ecole)
+library(readxl)
+library(RColorBrewer)
+library(dplyr)
+
+
+getwd() 
+```
+
+```{r}
+check_input(data = "AphaenogasterMasterSheetCHCONLY.txt") 
+```
+
+```{r}
+apur_align_aphaenoCHC <- align_chromatograms(data = "AphaenogasterMasterSheetCHCONLY.txt", rt_col_name = "RT", max_linear_shift = 0.1, max_diff_peak2mean = 0.01, min_diff_peak2peak = 0.2) 
+
+#Save for later
+save(apur_align_aphaenoCHC, file = "apur_align_aphaenoCHC.RData")
+
+#Load in so you do not have to wait again for code to run
+load("apur_align_aphaenoCHC.RData")
+
+
+apur_align_export_aphaenoCHC <- as.data.frame(x = apur_align_aphaenoCHC) 
+print(apur_align_export_aphaenoCHC) 
+
+##TABLE OF RETENTION TIME AND AREAS, ONLY RUN IF YOU WANT COPIES OF THIS
+write.csv(as.data.frame(apur_align_export_aphaenoCHC$AREA),
+          file = "C:/Users/lily2/Desktop/CHCS/aligned_aphaeno_areaCHC.csv",
+          row.names = TRUE)
+ 
+
+write.csv(x = apur_align_export_aphaenoCHC$RT, file = "C:/Users/lily2/Desktop/CHCS/aligned_aphaeno_RTCHC.csv") 
+
+print(apur_align_aphaenoCHC) 
+print(apur_align_export_aphaenoCHC) 
+```
+
+```{r}
+plot(apur_align_aphaenoCHC) 
+#We want the full chromatogram shifts to be a bell curve with zero in the middle
+
+#Heat Map 
+
+gc_heatmap(apur_align_aphaenoCHC) 
+```
+
+### Create an alignment
+```{r}
+alignment_aphaenoCHC <- as.matrix(apur_align_aphaenoCHC) 
+str(alignment_aphaenoCHC) 
+print(alignment_aphaenoCHC) 
+
+str(apur_align_aphaenoCHC) 
+
+names(apur_align_aphaenoCHC) 
+
+#extract normalised peak area values 
+
+scent_aphaenoCHC <- norm_peaks(data = apur_align_aphaenoCHC, rt_col_name = "RT", conc_col_name = "AREA", out = "data.frame")
+```
+
+### Creating a nMDS plot
+```{r}
+#Log Transformation
+
+logscent_aphaenoCHC <- log (scent_aphaenoCHC + 1) 
+
+# Step 1: Run NMDS
+scent_nmds_aphaenoCHC <- vegan::metaMDS(comm = logscent_aphaenoCHC, distance = "bray", autotransform = TRUE)
+
+#Stress value for the nMDS diagram
+stress_valueCHC <- round(scent_nmds_aphaenoCHC$stress, 3)
+
+# Step 2: Extract NMDS coordinates
+nmds_pointsCHC <- as.data.frame(scent_nmds_aphaenoCHC[["points"]])
+
+# Step 3: Add sample names (if not already rownames)
+nmds_pointsCHC$Sample <- rownames(nmds_pointsCHC)
+
+# Step 4: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 5: Merge NMDS points with metadata
+scent_nmdsCHC <- left_join(nmds_pointsCHC, metadata, by = "Sample")
+```
+
+```{r}
+library(ggrepel)
+
+p <- ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = Species)) +
+  geom_point(size = 4) +
+  geom_text_repel(aes(label = Sample), size = 3.5, show.legend = FALSE) +  # add sample labels
+  ggtitle("Cuticular Hydrocarbon Profiles of Aphaenogaster") +
+  theme_void() +
+  scale_color_viridis_d(option = "D") + 
+  theme(
+    panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+    plot.title = element_text(hjust = 0.5),
+    aspect.ratio = 1,
+    legend.position = "right"
+  ) +
+  annotate(
+    "text",
+    x = -Inf, y = -Inf,
+    label = paste("Stress =", stress_valueCHC),
+    hjust = -0.1, vjust = -1.2, size = 4
+  )
+p
+```
+
+# All Samples
+```{r}
+##Host vs. Parasite
+p <- ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = Role)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") + 
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Publication ready
+library(ggplot2)
+library(viridis)
+
+natural_forest <- c(
+  "#003300",  # very dark green-black
+  "#064b1f",  # deep pine green
+  "#127e3a",  # forest green
+  "#2e8b57",  # medium green
+  "#5ca45d",  # moss green
+  "#a8c686"   # muted light green
+)
+
+p <- ggplot(data = scent_nmdsCHC, aes(x = MDS1, y = MDS2, color = Role)) +
+  geom_point(size = 4, alpha = 0.8)+
+ scale_color_manual(
+  name = "Role",  # legend title
+  values = c(
+    "Host" = "#5ca45d",     # green
+    "Parasite" = "black"    # black
+  )
+)+
+  xlab("") +
+  ylab("NMDS2") +
+  guides(color = guide_legend(order = 1)) +
+  annotate(
+    "text",
+    x = -Inf, y = Inf,
+    label = paste("Stress =", stress_valueCHC),
+    hjust = -0.05, vjust = 1.3, size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    # Clean white background
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+
+    # Remove all gridlines
+    panel.grid = element_blank(),
+
+    # Add only bottom and left axis lines
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank(),
+
+    # Axis and legend styling
+    axis.text = element_text(size = 12, color = "black"),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(2, "lines"),
+    aspect.ratio = 1,
+    legend.position = "right"
+  )
+
+
+##Colony
+p1<- ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = Colony)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Species
+p2<-ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = Species)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Publication ready
+library(ggplot2)
+library(viridis)
+
+# Named vector mapping your raw species names to italic labels
+species_labels <- c(
+  "Fulva" = "italic('A. fulva')",
+  "Rudis" = "italic('A. rudis')",
+  "Picea" = "italic('A. picea')",
+  "Tennesseensis" = "italic('A. tennesseensis')"
+)
+
+p2 <- ggplot(data = scent_nmdsCHC, aes(x = MDS1, y = MDS2, color = Species)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_viridis_d(
+    name = "Species",
+    option = "C",
+    labels = scales::label_parse()(species_labels)
+  ) +
+  xlab("NMDS1") +
+  ylab("NMDS2") +
+  guides(color = guide_legend(order = 1)) +
+  annotate(
+    "text",
+    x = -Inf, y = Inf,
+    label = paste("Stress =", stress_valueCHC),
+    hjust = -0.05, vjust = 1.3, size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank(),
+    axis.text = element_text(size = 12, color = "black"),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12, hjust = 0),
+    legend.key.size = unit(2, "lines"),
+    aspect.ratio = 1,
+    legend.position = "right"
+  )
+
+##Pannel figure :)
+library(patchwork)
+
+# stacked vertically
+pp2 <- (p / p2) + 
+  plot_annotation(tag_levels = 'A')
+
+##COLORED BY SPECIES SHAPED BY ROLE
+p16 <- ggplot(data = scent_nmdsCHC, aes(x = MDS1, y = MDS2, color = Species, shape = Role)) +
+  geom_point(size = 4, alpha = 0.8) +
+  scale_color_manual(
+    name = "Species",
+    values = c(
+      "Fulva" = "#064b1f",        # deep pine green
+      "Picea" = "#2e8b57",        # medium green
+      "Rudis" = "#a8c686",        # muted light green
+      "Tennesseensis" = "#7b4fa0" # purple
+    ),
+    labels = scales::label_parse()(species_labels)
+  ) +
+  scale_shape_manual(
+    name = "Role",
+    values = c(16, 15) # circle, square
+  ) +
+  xlab("NMDS1") +
+  ylab("NMDS2") +
+  guides(
+    color = guide_legend(order = 1),
+    shape = guide_legend(order = 2)
+  ) +
+  annotate(
+    "text",
+    x = -Inf, y = Inf,
+    label = paste("Stress =", stress_valueCHC),
+    hjust = -0.05, vjust = 1.3, size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank(),
+    axis.text = element_text(size = 12, color = "black"),
+    axis.title = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12, hjust = 0),
+    legend.key.size = unit(2, "lines"),
+    aspect.ratio = 1,
+    legend.position = "right"
+  )
+
+
+
+##Sample Age (Collected a while ago, fresh collection, frozen samples)
+p3<-ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = SampleAge)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##State of Collection
+p4<- ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = State)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Collection site
+p5<- ggplot(data = scent_nmdsCHC, aes(MDS1, MDS2, color = Location)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```
+
+## Each Host vs. Parasite seperate
+#  Rudis vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennrudis <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Rudis"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennrudis <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennrudis$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_tennrudis <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_tennrudis,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_tennrudis <- round(scent_nmds_aphaenoCHC_tennrudis$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_tennrudis <- as.data.frame(scent_nmds_aphaenoCHC_tennrudis[["points"]])
+nmds_pointsCHC_tennrudis$Sample <- rownames(nmds_pointsCHC_tennrudis)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_tennrudis <- left_join(nmds_pointsCHC_tennrudis, metadata_tennrudis, by = "Sample")
+
+
+trp <- ggplot(data = scent_nmdsCHC_tennrudis, aes(MDS1, MDS2, color = Role)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") + 
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = Inf,
+           label = paste("Stress =", stress_valueCHC_tennrudis),
+           hjust = -0.1, vjust = 1.2, size = 4)
+```
+
+# picea vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennpicea <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Picea"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennpicea <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennpicea$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_tennpicea <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_tennpicea,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_tennpicea <- round(scent_nmds_aphaenoCHC_tennpicea$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_tennpicea <- as.data.frame(scent_nmds_aphaenoCHC_tennpicea[["points"]])
+nmds_pointsCHC_tennpicea$Sample <- rownames(nmds_pointsCHC_tennpicea)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_tennpicea <- left_join(nmds_pointsCHC_tennpicea, metadata_tennpicea, by = "Sample")
+
+tpp <- ggplot(data = scent_nmdsCHC_tennpicea, aes(MDS1, MDS2, color = Role)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") + 
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_tennpicea),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```
+
+
+# Fulva vs. ten
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tennfulva <- metadata %>%
+  filter(Species %in% c("Tennesseensis", "Fulva"))
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tennfulva <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tennfulva$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_tennfulva <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_tennfulva,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_tennfulva <- round(scent_nmds_aphaenoCHC_tennfulva$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_tennfulva <- as.data.frame(scent_nmds_aphaenoCHC_tennfulva[["points"]])
+nmds_pointsCHC_tennfulva$Sample <- rownames(nmds_pointsCHC_tennfulva)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_tennfulva <- left_join(nmds_pointsCHC_tennfulva, metadata_tennfulva, by = "Sample")
+
+tfp <- ggplot(data = scent_nmdsCHC_tennfulva, aes(MDS1, MDS2, color = Role)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") + 
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = Inf,
+           label = paste("Stress =", stress_valueCHC_tennfulva),
+           hjust = -0.1, vjust = 1.2, size = 4)
+```
+
+
+## A. ten Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_tenn <- metadata %>%
+  filter(Species == "Tennesseensis")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_tenn <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_tenn$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_tenn <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_tenn,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_tenn <- round(scent_nmds_aphaenoCHC_tenn$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_tenn <- as.data.frame(scent_nmds_aphaenoCHC_tenn[["points"]])
+nmds_pointsCHC_tenn$Sample <- rownames(nmds_pointsCHC_tenn)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_tenn <- left_join(nmds_pointsCHC_tenn, metadata_tenn, by = "Sample")
+
+```
+
+
+```{r}
+
+##Colony
+tp<- ggplot(data = scent_nmdsCHC_tenn, aes(MDS1, MDS2, color = Colony)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_tenn),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##State of Collection
+tp1<- ggplot(data = scent_nmdsCHC_tenn, aes(MDS1, MDS2, color = State)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_tenn),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Collection site
+tp2<- ggplot(data = scent_nmdsCHC_tenn, aes(MDS1, MDS2, color = Location)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_tenn),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```
+
+## A. rudis Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_rudis <- metadata %>%
+  filter(Species == "Rudis")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_rudis <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_rudis$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_rudis <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_rudis,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_rudis <- round(scent_nmds_aphaenoCHC_rudis$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_rudis <- as.data.frame(scent_nmds_aphaenoCHC_rudis[["points"]])
+nmds_pointsCHC_rudis$Sample <- rownames(nmds_pointsCHC_rudis)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_rudis <- left_join(nmds_pointsCHC_rudis, metadata_rudis, by = "Sample")
+
+```
+
+```{r}
+##Colony
+rp<- ggplot(data = scent_nmdsCHC_rudis, aes(MDS1, MDS2, color = Colony)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_rudis),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##State of Collection
+rp1<- ggplot(data = scent_nmdsCHC_rudis, aes(MDS1, MDS2, color = State)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_rudis),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Collection site
+rp2<- ggplot(data = scent_nmdsCHC_rudis, aes(MDS1, MDS2, color = Location)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_rudis),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```
+
+## A. picea Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_picea <- metadata %>%
+  filter(Species == "Picea")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_picea <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_picea$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_picea <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_picea,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_picea <- round(scent_nmds_aphaenoCHC_picea$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_picea <- as.data.frame(scent_nmds_aphaenoCHC_picea[["points"]])
+nmds_pointsCHC_picea$Sample <- rownames(nmds_pointsCHC_picea)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_picea <- left_join(nmds_pointsCHC_picea, metadata_picea, by = "Sample")
+
+```
+
+```{r}
+##Colony
+pp<- ggplot(data = scent_nmdsCHC_picea, aes(MDS1, MDS2, color = Colony)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_picea),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##State of Collection
+pp1<- ggplot(data = scent_nmdsCHC_picea, aes(MDS1, MDS2, color = State)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_picea),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Collection site
+pp2<- ggplot(data = scent_nmdsCHC_picea, aes(MDS1, MDS2, color = Location)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_picea),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```
+
+## A. fulva Only
+```{r}
+# Step 1: Read metadata
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+# Step 2: Filter metadata to Tennesseensis samples
+metadata_fulva <- metadata %>%
+  filter(Species == "Fulva")
+
+# Step 3: Subset your CHC data to only those samples
+logscent_aphaenoCHC_fulva <- logscent_aphaenoCHC[rownames(logscent_aphaenoCHC) %in% metadata_fulva$Sample, ]
+
+# Step 4: Run NMDS only on Tennesseensis samples
+scent_nmds_aphaenoCHC_fulva <- vegan::metaMDS(
+  comm = logscent_aphaenoCHC_fulva,
+  distance = "bray",
+  autotransform = TRUE
+)
+
+# Step 5: Extract stress value
+stress_valueCHC_fulva <- round(scent_nmds_aphaenoCHC_fulva$stress, 3)
+
+# Step 6: Extract NMDS coordinates
+nmds_pointsCHC_fulva <- as.data.frame(scent_nmds_aphaenoCHC_fulva[["points"]])
+nmds_pointsCHC_fulva$Sample <- rownames(nmds_pointsCHC_fulva)
+
+# Step 7: Merge NMDS points with the Tennesseensis metadata
+scent_nmdsCHC_fulva <- left_join(nmds_pointsCHC_fulva, metadata_fulva, by = "Sample")
+
+```
+
+```{r}
+##Colony
+fp<- ggplot(data = scent_nmdsCHC_fulva, aes(MDS1, MDS2, color = Colony)) +
+  geom_point(size = 4) +
+  theme_void() +
+ scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_fulva),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##State of Collection
+fp1<- ggplot(data = scent_nmdsCHC_fulva, aes(MDS1, MDS2, color = State)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_fulva),
+           hjust = -0.1, vjust = -1.2, size = 4)
+
+##Collection site
+fp2<- ggplot(data = scent_nmdsCHC_fulva, aes(MDS1, MDS2, color = Location)) +
+  geom_point(size = 4) +
+  theme_void() +
+  scale_color_viridis_d(option = "D") +
+  theme(panel.background = element_rect(colour = "black", linewidth = 1.25, fill = NA),
+        plot.title = element_text(hjust = 0.5),
+        aspect.ratio = 1,
+        legend.position = "right") +
+  annotate("text",
+           x = -Inf, y = -Inf,
+           label = paste("Stress =", stress_valueCHC_fulva),
+           hjust = -0.1, vjust = -1.2, size = 4)
+```

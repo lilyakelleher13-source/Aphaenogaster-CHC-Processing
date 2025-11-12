@@ -1,0 +1,91 @@
+# Indicator Analysis
+
+```{r}
+
+library(readxl)
+library(indicspecies)
+
+logscent_aphaenoCHC <- log (scent_aphaenoCHC + 1) 
+
+metadata <- read_excel("AphaenoCHCMetadata.xlsx")
+
+common_samples <- intersect(rownames(logscent_aphaenoCHC), metadata$Sample)
+
+# Subset both to the same set
+logscent_aphaenoCHC <- logscent_aphaenoCHC[common_samples, ]
+metadata <- metadata[metadata$Sample %in% common_samples, ]
+
+# Reorder metadata to match row order of CHC data
+metadata <- metadata[match(rownames(logscent_aphaenoCHC), metadata$Sample), ]
+
+
+logscent_aphaenoCHC <- logscent_aphaenoCHC[match(metadata$Sample, rownames(logscent_aphaenoCHC)), ]
+
+abund <- logscent_aphaenoCHC       
+species <- metadata$Species 
+role <- metadata$Role
+state <- metadata$State
+age <- metadata$SampleAge
+elevation <- metadata$Elevation
+location <- metadata$Location
+colony <- metadata$Colony
+
+set.seed(13)
+
+indicator_species <- multipatt(abund, 
+                        species, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_species, alpha = 0.05, minstat = 0.8)
+
+indicator_role <- multipatt(abund, 
+                        role, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_role, alpha = 0.05, minstat = 0.8)
+
+indicator_state <- multipatt(abund, 
+                        state, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_state, alpha = 0.05, minstat = 0.8)
+
+indicator_age <- multipatt(abund, 
+                        age, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_age, alpha = 0.05, minstat = 0.8)
+
+indicator_elevation <- multipatt(abund, 
+                        elevation, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_elevation, alpha = 0.05, minstat = 0.8)
+
+indicator_location <- multipatt(abund, 
+                        location, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_location, alpha = 0.05, minstat = 0.8)
+
+indicator_colony <- multipatt(abund, 
+                        colony, 
+                        func = "IndVal.g", 
+                        duleg = TRUE, 
+                        control = how(nperm = 999))
+
+summary(indicator_colony, alpha = 0.05, minstat = 0.8)
+
+```
